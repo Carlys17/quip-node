@@ -1,10 +1,19 @@
 # Quip Network Node Setup Guide
 
-Complete guide for deploying and running a Quip Network validator node.
+Complete guide for deploying and running a Quip Network validator node on **TESTNET**.
 
 ## Overview
 
-Quip Network is a decentralized infrastructure network providing distributed computing services. Running a node helps secure the network while earning rewards.
+Quip Network is a decentralized infrastructure network currently in **TESTNET** phase. Running a testnet node helps secure the network and may qualify for future mainnet rewards.
+
+⚠️ **Important**: Quip Network is currently in TESTNET. Mainnet launch date TBA.
+
+## Network Status
+
+| Phase | Status | Date |
+|-------|--------|------|
+| Testnet | ✅ Active | Live |
+| Mainnet | ⏳ Planned | TBA |
 
 ## System Requirements
 
@@ -23,7 +32,7 @@ Quip Network is a decentralized infrastructure network providing distributed com
 
 ## Installation
 
-### Method 1: Docker (Recommended)
+### Method 1: Docker (Recommended for Testnet)
 
 ```bash
 # Install Docker
@@ -34,28 +43,28 @@ sudo apt install -y docker.io docker-compose
 sudo usermod -aG docker $USER
 newgrp docker
 
-# Pull Quip image
-docker pull quipnetwork/quip-node:latest
+# Pull Quip testnet image
+docker pull quipnetwork/quip-node:testnet
 
 # Create data directory
 mkdir -p ~/.quip/data
 
-# Run node
+# Run testnet node
 docker run -d \
   --name quip-node \
   --restart unless-stopped \
   -p 30303:30303 \
   -p 30303:30303/udp \
   -v ~/.quip/data:/data \
-  quipnetwork/quip-node:latest \
+  quipnetwork/quip-node:testnet \
   --data-dir /data \
-  --network mainnet
+  --network testnet
 ```
 
 ### Method 2: Binary Installation
 
 ```bash
-# Download latest release
+# Download latest testnet release
 wget https://github.com/quipnetwork/quip-node/releases/latest/download/quip-node-linux-amd64.tar.gz
 
 # Extract
@@ -65,11 +74,11 @@ sudo mv quip-node /usr/local/bin/
 # Create data directory
 mkdir -p ~/.quip/data
 
-# Initialize node
-quip-node init --data-dir ~/.quip/data
+# Initialize node for testnet
+quip-node init --data-dir ~/.quip/data --network testnet
 
-# Start node
-quip-node start --data-dir ~/.quip/data --network mainnet
+# Start testnet node
+quip-node start --data-dir ~/.quip/data --network testnet
 ```
 
 ### Method 3: Build from Source
@@ -83,9 +92,9 @@ sudo apt install -y build-essential cmake git libssl-dev
 git clone https://github.com/quipnetwork/quip-node.git
 cd quip-node
 
-# Build
+# Build for testnet
 mkdir build && cd build
-cmake ..
+cmake -DNETWORK=testnet ..
 make -j$(nproc)
 
 # Install
@@ -94,22 +103,22 @@ sudo make install
 
 ## Configuration
 
-### Basic Configuration
+### Testnet Configuration
 
 ```bash
 # Create config file
 mkdir -p ~/.quip
 cat > ~/.quip/config.toml << 'EOF'
 [network]
-id = "mainnet"
+id = "testnet"
 bootnodes = [
-  "/dns4/bootnode1.quip.network/tcp/30303/p2p/...",
-  "/dns4/bootnode2.quip.network/tcp/30303/p2p/..."
+  "/dns4/bootnode1.testnet.quip.network/tcp/30303/p2p/...",
+  "/dns4/bootnode2.testnet.quip.network/tcp/30303/p2p/..."
 ]
 
 [node]
 data_dir = "/home/$USER/.quip/data"
-name = "your-node-name"
+name = "your-testnet-node"
 max_peers = 50
 
 [rpc]
@@ -117,42 +126,22 @@ enabled = true
 port = 8545
 cors_origins = ["*"]
 
-[rewards]
-address = "YOUR_ETHEREUM_ADDRESS"
+# Testnet faucet for test tokens
+[faucet]
+enabled = true
+url = "https://faucet.testnet.quip.network"
 EOF
 ```
 
-### Advanced Configuration
+### Getting Testnet Tokens
 
-```toml
-# ~/.quip/config.toml
-[network]
-id = "mainnet"
-bootnodes = [...]
+```bash
+# Request testnet tokens from faucet
+quip-node faucet request --address YOUR_ADDRESS
 
-[node]
-data_dir = "/data/quip"
-name = "carly-quip-node"
-max_peers = 100
-min_peers = 10
-
-[rpc]
-enabled = true
-port = 8545
-host = "127.0.0.1"
-cors_origins = ["http://localhost:3000"]
-
-[metrics]
-enabled = true
-port = 9090
-
-[rewards]
-address = "0x..."
-auto_claim = true
-
-[performance]
-cache_size = 4096
-db_threads = 4
+# Or visit faucet website
+curl -X POST https://faucet.testnet.quip.network \
+  -d '{"address": "YOUR_ETH_ADDRESS"}'
 ```
 
 ## Systemd Service Setup
@@ -160,14 +149,14 @@ db_threads = 4
 ```bash
 sudo tee /etc/systemd/system/quip-node.service > /dev/null << 'EOF'
 [Unit]
-Description=Quip Network Node
+Description=Quip Network Testnet Node
 After=network.target
 
 [Service]
 Type=simple
 User=$USER
 WorkingDirectory=$HOME
-ExecStart=/usr/local/bin/quip-node start --config $HOME/.quip/config.toml
+ExecStart=/usr/local/bin/quip-node start --config $HOME/.quip/config.toml --network testnet
 Restart=always
 RestartSec=10
 LimitNOFILE=65535
@@ -183,11 +172,11 @@ sudo systemctl start quip-node
 
 ## Monitoring
 
-### Check Node Status
+### Check Testnet Node Status
 
 ```bash
 # Node status
-quip-node status
+quip-node status --network testnet
 
 # Peer count
 quip-node peers count
@@ -197,6 +186,9 @@ quip-node chain height
 
 # Sync status
 quip-node sync status
+
+# Testnet specific info
+quip-node network info
 ```
 
 ### Logs
@@ -208,6 +200,30 @@ sudo journalctl -u quip-node -f
 # Docker logs
 docker logs -f quip-node
 ```
+
+## Testnet to Mainnet Migration
+
+When mainnet launches:
+
+1. **Backup testnet data**:
+   ```bash
+   cp -r ~/.quip/data ~/.quip/data-testnet-backup
+   ```
+
+2. **Update to mainnet**:
+   ```bash
+   # Pull mainnet image
+   docker pull quipnetwork/quip-node:mainnet
+   
+   # Or update binary
+   quip-node update --network mainnet
+   ```
+
+3. **Update config**:
+   ```toml
+   [network]
+   id = "mainnet"
+   ```
 
 ## Troubleshooting
 
@@ -232,6 +248,27 @@ docker logs -f quip-node
    netstat -tlnp | grep 30303
    ```
 
+### Issue: Cannot connect to testnet
+
+**Symptoms**: Node stuck at "connecting to network"
+
+**Solutions**:
+1. Verify testnet bootnodes:
+   ```bash
+   quip-node config get network.bootnodes
+   ```
+
+2. Check testnet status:
+   ```bash
+   curl https://status.testnet.quip.network
+   ```
+
+3. Reset and resync:
+   ```bash
+   quip-node reset --network testnet
+   quip-node start --network testnet
+   ```
+
 ### Issue: Sync stuck
 
 **Symptoms**: Block height not increasing
@@ -251,7 +288,7 @@ docker logs -f quip-node
 
 3. Check network connectivity:
    ```bash
-   telnet bootnode1.quip.network 30303
+   telnet bootnode1.testnet.quip.network 30303
    ```
 
 ### Issue: Low peer count
@@ -272,36 +309,59 @@ docker logs -f quip-node
 
 3. Check NAT/port forwarding
 
-### Issue: No rewards
+### Issue: Faucet not working
 
-**Symptoms**: Node running but no rewards
+**Symptoms**: Cannot get testnet tokens
 
 **Solutions**:
-1. Verify address in config
-2. Check minimum uptime requirement
-3. Verify node is fully synced
-4. Check eligibility on dashboard
+1. Check faucet status page
+2. Try alternative faucet:
+   ```bash
+   quip-node faucet request --provider alternate
+   ```
+3. Join Discord for manual faucet request
+
+### Issue: Low testnet rewards
+
+**Symptoms**: Not earning testnet points
+
+**Solutions**:
+1. Verify node is fully synced
+2. Check uptime requirements
+3. Ensure proper peer connections
+4. Check testnet reward criteria
 
 ## FAQ
 
-**Q: How long does sync take?**
+**Q: Is Quip mainnet live?**
+A: No, Quip is currently in testnet phase. Mainnet launch date is TBA.
+
+**Q: Do testnet rewards transfer to mainnet?**
+A: Testnet participation may qualify for mainnet incentives, but not guaranteed.
+
+**Q: How long does testnet sync take?**
 A: Initial sync takes 2-6 hours depending on network and hardware.
 
-**Q: Can I run multiple nodes?**
+**Q: Can I run multiple testnet nodes?**
 A: Yes, but each needs unique resources and configuration.
 
-**Q: What happens if my node goes offline?**
-A: Rewards pause but resume when node comes back online (if within grace period).
+**Q: What happens to my node after mainnet launch?**
+A: You can migrate your node to mainnet or continue running on testnet.
 
-**Q: How to backup node?**
-A: Backup `~/.quip/data` directory and config file.
+**Q: How do I update the node?**
+A: ```bash
+quip-node stop
+quip-node update --network testnet
+quip-node start --network testnet
+```
 
 ## Resources
 
 - [Official Docs](https://docs.quip.network)
-- [Explorer](https://explorer.quip.network)
-- [Discord](https://discord.gg/quip)
+- [Testnet Explorer](https://explorer.testnet.quip.network)
+- [Discord Community](https://discord.gg/quip)
 - [GitHub](https://github.com/quipnetwork)
+- [Testnet Faucet](https://faucet.testnet.quip.network)
 
 ## License
 
